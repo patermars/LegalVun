@@ -1,0 +1,5 @@
+google-generativeai
+pdfplumber
+flask
+flask-cors
+werkzeug
