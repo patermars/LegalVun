@@ -262,15 +262,6 @@ def health_check():
 @app.route('/', methods=['GET'])
 def index():
     return render_template('index.html')
-    # """Basic info endpoint"""
-    # return jsonify({
-    #     "service": "Legal Document Analyzer API",
-    #     "version": "1.0",
-    #     "endpoints": {
-    #         "/analyze": "POST - Upload PDF for analysis",
-    #         "/health": "GET - Health check"
-    #     }
-    # })
 
 def analyze_local_file(file_path: str):
     """Standalone function to analyze local PDF file"""
@@ -340,6 +331,6 @@ if __name__ == "__main__":
     else:
         # Web server mode
         print("🦅 Starting LegalHawk API Server...")
-        print("📋 Upload PDFs to http://localhost:5000/analyze")
+        print("📋 Upload PDFs to http://localhost:5000")
         print("💻 Open the HTML file in your browser to use the web interface")
         app.run(debug=True, host='0.0.0.0', port=5000)
