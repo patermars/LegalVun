@@ -7,98 +7,167 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <div class="container">
-        <div class="hero">
-            <h1 class="logo">🦅 LegalHawk</h1>
-            <p class="tagline">Ethical Hacking for Legal Documents</p>
+    <!-- Main Landing Page -->
+    <div class="main-page" id="mainPage">
+        <div class="container">
+            <div class="hero">
+                <h1 class="logo">🦅 LegalHawk</h1>
+                <p class="tagline">Ethical Hacking for Legal Documents</p>
+            </div>
+
+            <div class="upload-section">
+                <div class="upload-zone" onclick="document.getElementById('pdfInput').click()">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-text">Drop your Terms & Conditions PDF here</div>
+                    <div class="upload-subtext">or click to browse files</div>
+                    <input type="file" id="pdfInput" class="file-input" accept=".pdf" />
+                </div>
+                
+                <div class="file-preview" id="filePreview">
+                    <div class="file-info">
+                        <span class="file-icon">📄</span>
+                        <div>
+                            <div id="fileName" style="font-weight: 600; color: #333;"></div>
+                            <div id="fileSize" style="color: #666; font-size: 0.9rem;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="analyze-btn" id="analyzeBtn" onclick="analyzeDocument()">
+                    🔍 Analyze Document
+                </button>
+
+                <div class="loading-spinner" id="loadingSpinner"></div>
+            </div>
+
+            <div class="features">
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <h3 class="feature-title">Simplification & Accessibility</h3>
+                    <p class="feature-desc">Translate complex legal clauses into plain, understandable language with toggle between original and simplified text.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">⚠️</div>
+                    <h3 class="feature-title">Loophole & Risk Detection</h3>
+                    <p class="feature-desc">Identify ambiguous, one-sided, or exploitable clauses with severity categorization (🟢 safe, 🟡 caution, 🔴 high risk).</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3 class="feature-title">Exploit Simulation</h3>
+                    <p class="feature-desc">Show users how clauses could be used against them with real-world impact examples.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🛠️</div>
+                    <h3 class="feature-title">Patch Suggestions</h3>
+                    <p class="feature-desc">Suggest alternative fairer wordings for risky clauses with negotiation-ready edits.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3 class="feature-title">Transparency Scorecard</h3>
+                    <p class="feature-desc">Provide an overall "Legal Exploitability Score" broken down by clarity, balance, and enforceability.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3 class="feature-title">Ethical Hacking Approach</h3>
+                    <p class="feature-desc">Expose legal vulnerabilities before they can be exploited against you, empowering informed decision-making.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Page -->
+    <div class="report-page" id="reportPage">
+        <div class="report-header">
+            <button class="back-btn" onclick="showMainPage()">← Back to Upload</button>
+            <div>
+                <h1 class="report-title">Legal Analysis Report</h1>
+                <p class="report-subtitle" id="reportSubtitle">Comprehensive Analysis of Your Document</p>
+            </div>
         </div>
 
-        <div class="upload-section">
-            <div class="upload-zone" onclick="document.getElementById('pdfInput').click()">
-                <div class="upload-icon">📄</div>
-                <div class="upload-text">Drop your Terms & Conditions PDF here</div>
-                <div class="upload-subtext">or click to browse files</div>
-                <input type="file" id="pdfInput" class="file-input" accept=".pdf" />
-            </div>
-            
-            <div class="file-preview" id="filePreview">
-                <div class="file-info">
-                    <span class="file-icon">📄</span>
-                    <div>
-                        <div id="fileName" style="font-weight: 600; color: #333;"></div>
-                        <div id="fileSize" style="color: #666; font-size: 0.9rem;"></div>
+        <div class="report-content">
+            <!-- Score Overview -->
+            <div class="score-overview">
+                <h2>Legal Exploitability Score</h2>
+                <div class="main-score" id="mainScore">--</div>
+                <p>Overall risk assessment of your document</p>
+                
+                <div class="score-breakdown">
+                    <div class="score-metric">
+                        <div class="metric-value" id="clarityScoreReport">--</div>
+                        <div class="metric-label">Clarity Score</div>
+                    </div>
+                    <div class="score-metric">
+                        <div class="metric-value" id="balanceScoreReport">--</div>
+                        <div class="metric-label">Balance Score</div>
+                    </div>
+                    <div class="score-metric">
+                        <div class="metric-value" id="enforceabilityScoreReport">--</div>
+                        <div class="metric-label">Enforceability Score</div>
                     </div>
                 </div>
             </div>
 
-            <button class="analyze-btn" id="analyzeBtn" onclick="analyzeDocument()">
-                🔍 Analyze Document
-            </button>
-
-            <div class="loading-spinner" id="loadingSpinner"></div>
-        </div>
-
-        <div class="features">
-            <div class="feature-card">
-                <div class="feature-icon">🔍</div>
-                <h3 class="feature-title">Simplification & Accessibility</h3>
-                <p class="feature-desc">Translate complex legal clauses into plain, understandable language with toggle between original and simplified text.</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">⚠️</div>
-                <h3 class="feature-title">Loophole & Risk Detection</h3>
-                <p class="feature-desc">Identify ambiguous, one-sided, or exploitable clauses with severity categorization (🟢 safe, 🟡 caution, 🔴 high risk).</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">🎯</div>
-                <h3 class="feature-title">Exploit Simulation</h3>
-                <p class="feature-desc">Show users how clauses could be used against them with real-world impact examples.</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">🛠️</div>
-                <h3 class="feature-title">Patch Suggestions</h3>
-                <p class="feature-desc">Suggest alternative fairer wordings for risky clauses with negotiation-ready edits.</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">📊</div>
-                <h3 class="feature-title">Transparency Scorecard</h3>
-                <p class="feature-desc">Provide an overall "Legal Exploitability Score" broken down by clarity, balance, and enforceability.</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">🎯</div>
-                <h3 class="feature-title">Ethical Hacking Approach</h3>
-                <p class="feature-desc">Expose legal vulnerabilities before they can be exploited against you, empowering informed decision-making.</p>
-            </div>
-        </div>
-
-        <div class="results-section" id="resultsSection">
-            <h2 style="color: #333; margin-bottom: 30px;">📋 Document Analysis Results</h2>
-            
-            <div class="score-card">
-                <h3>Legal Exploitability Score</h3>
-                <div class="score-value" id="overallScore">--</div>
-                <div class="score-metrics">
-                    <div class="metric">
-                        <div class="metric-value" id="clarityScore">--</div>
-                        <div class="metric-label">Clarity</div>
+            <!-- Risk Legend -->
+            <div class="risk-legend">
+                <div class="legend-title">
+                    🎯 Color Guide for Highlighted Text
+                </div>
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <div class="legend-color risk-safe" style="border-left-color: #4CAF50;"></div>
+                        <span><strong>Green:</strong> Safe clauses with low risk</span>
                     </div>
-                    <div class="metric">
-                        <div class="metric-value" id="balanceScore">--</div>
-                        <div class="metric-label">Balance</div>
+                    <div class="legend-item">
+                        <div class="legend-color risk-caution" style="border-left-color: #FFC107;"></div>
+                        <span><strong>Yellow:</strong> Caution - potential concerns</span>
                     </div>
-                    <div class="metric">
-                        <div class="metric-value" id="enforceabilityScore">--</div>
-                        <div class="metric-label">Enforceability</div>
+                    <div class="legend-item">
+                        <div class="legend-color risk-exploitable" style="border-left-color: #F44336;"></div>
+                        <span><strong>Red:</strong> High risk - exploitable clauses</span>
                     </div>
+                </div>
+                <p style="margin-top: 15px; color: #666; font-style: italic;">
+                    💡 Hover over highlighted text to see detailed analysis
+                </p>
+            </div>
+
+            <!-- Document Viewer with Highlighted Text -->
+            <div class="document-viewer">
+                <div class="document-title" id="documentTitle">Terms and Conditions Document</div>
+                <div id="highlightedDocument">
+                    <!-- Highlighted document content will be inserted here -->
                 </div>
             </div>
 
-            <div id="analysisResults"></div>
+            <!-- Analysis Summary -->
+            <div class="analysis-summary">
+                <h2 class="summary-title">📋 Analysis Summary</h2>
+                
+                <div class="summary-stats">
+                    <div class="stat-box high-risk">
+                        <div class="stat-number" id="highRiskCount">--</div>
+                        <div class="stat-label">High Risk Clauses</div>
+                    </div>
+                    <div class="stat-box medium-risk">
+                        <div class="stat-number" id="mediumRiskCount">--</div>
+                        <div class="stat-label">Medium Risk Clauses</div>
+                    </div>
+                    <div class="stat-box safe">
+                        <div class="stat-number" id="safeCount">--</div>
+                        <div class="stat-label">Safe Clauses</div>
+                    </div>
+                </div>
+
+                <div class="detailed-findings" id="detailedFindings">
+                    <!-- Detailed findings will be inserted here -->
+                </div>
+            </div>
         </div>
     </div>
 

@@ -2,7 +2,8 @@ import google.generativeai as genai
 import pdfplumber
 import json
 import re
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_from_directory
+import os
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
@@ -45,27 +46,50 @@ class LegalDocumentAnalyzer:
         
         return text.strip()
     
-    def split_into_clauses(self, text: str) -> List[str]:
-        """Split document text into individual clauses"""
+    def split_into_clauses(self, text: str) -> List[Dict[str, Any]]:
+        """Split document text into individual clauses with position tracking"""
         # Split by common clause separators
         clauses = re.split(r'\n\s*\d+\.|(?:\n\s*[A-Z]\.)|(?:\n\s*\([a-z]\))', text)
         
-        # Clean and filter clauses
+        # Clean and filter clauses with position tracking
         cleaned_clauses = []
+        current_position = 0
+        
         for clause in clauses:
             clause = clause.strip()
             if len(clause) > 50:  # Only keep substantial clauses
-                cleaned_clauses.append(clause)
+                # Find the actual position in original text
+                start_pos = text.find(clause, current_position)
+                if start_pos != -1:
+                    cleaned_clauses.append({
+                        'text': clause,
+                        'start_position': start_pos,
+                        'end_position': start_pos + len(clause)
+                    })
+                    current_position = start_pos + len(clause)
         
         # If we don't get good clause separation, split by paragraphs
         if len(cleaned_clauses) < 3:
             paragraphs = text.split('\n\n')
-            cleaned_clauses = [p.strip() for p in paragraphs if len(p.strip()) > 50]
-        
+            cleaned_clauses = []
+            current_position = 0
+            
+            for p in paragraphs:
+                p = p.strip()
+                if len(p) > 50:
+                    start_pos = text.find(p, current_position)
+                    if start_pos != -1:
+                        cleaned_clauses.append({
+                            'text': p,
+                            'start_position': start_pos,
+                            'end_position': start_pos + len(p)
+                        })
+                        current_position = start_pos + len(p)
+    
         return cleaned_clauses[:20]  # Limit to first 20 clauses for efficiency
     
     def analyze_single_clause(self, clause: str) -> Dict[str, Any]:
-        """Analyze a single legal clause using Gemini AI"""
+        """Analyze a single clause for potential risks"""
         prompt = f"""
         You are a legal expert specializing in consumer protection. Analyze this legal clause for potential exploitation against users.
 
@@ -73,42 +97,72 @@ class LegalDocumentAnalyzer:
 
         Please provide your analysis in the following JSON format:
         {{
-            "simplified": "Plain English explanation of what this clause means",
+            "simplified": "Plain English explanation of what this clause means (max 100 words)",
             "risk_level": "safe|caution|exploitable",
             "risk_score": 1-10,
-            "exploitation_potential": "Detailed explanation of how this could be used against a user",
-            "real_world_impact": "Concrete examples of potential negative outcomes",
-            "fairer_alternative": "Suggested rewrite that would be more balanced",
-            "key_concerns": ["list", "of", "specific", "issues"]
+            "exploitation_potential": "Detailed explanation of how this could be used against a user (max 150 words)",
+            "real_world_impact": "Concrete, specific example of potential negative outcomes (max 80 words)",
+            "fairer_alternative": "Suggested rewrite that would be more balanced (max 100 words)",
+            "key_concerns": ["concern1", "concern2", "concern3"]
         }}
 
-        Focus on:
+        Scoring Guide:
+        - 1-3: Safe - Standard legal language, balanced terms
+        - 4-6: Caution - Some concerning elements but not severely problematic
+        - 7-10: Exploitable - Heavily favors company, potential for abuse
+
+        Focus specifically on:
         - Unilateral rights granted to the company
-        - Vague or ambiguous language
-        - Waiver of user rights
-        - Hidden obligations or fees
-        - Unreasonable restrictions
-        - Dispute resolution limitations
+        - Vague or ambiguous language that could be interpreted broadly
+        - Complete waiver of user rights or protections
+        - Hidden obligations, fees, or automatic renewals
+        - Unreasonable restrictions on user actions
+        - Dispute resolution limitations or forced arbitration
+        - Data usage and privacy concerns
+        - Termination clauses and account suspension rights
+
+        Be concise but thorough in your analysis.
         """
         
         try:
             response = model.generate_content(prompt)
-            # Clean the response text to extract JSON
             response_text = response.text.strip()
             
-            # Try to extract JSON from the response
-            json_start = response_text.find('{')
-            json_end = response_text.rfind('}') + 1
-            
-            if json_start != -1 and json_end > json_start:
-                json_text = response_text[json_start:json_end]
-                return json.loads(json_text)
-            else:
-                # Fallback if JSON parsing fails
-                return self._create_fallback_analysis(clause, response_text)
+            # Try to parse JSON response
+            try:
+                # Extract JSON from response if it's wrapped in markdown or other text
+                import re
+                json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+                if json_match:
+                    json_str = json_match.group(0)
+                    analysis = json.loads(json_str)
+                else:
+                    # If no JSON found, try parsing the whole response
+                    analysis = json.loads(response_text)
                 
+                # Validate required fields
+                required_fields = ['simplified', 'risk_level', 'risk_score', 'exploitation_potential', 'fairer_alternative']
+                for field in required_fields:
+                    if field not in analysis:
+                        analysis[field] = "Analysis not available"
+                
+                # Ensure risk_score is a number
+                if not isinstance(analysis.get('risk_score'), (int, float)):
+                    analysis['risk_score'] = 5
+                
+                # Ensure key_concerns is a list
+                if not isinstance(analysis.get('key_concerns'), list):
+                    analysis['key_concerns'] = ["General concerns identified"]
+                
+                return analysis
+                
+            except (json.JSONDecodeError, AttributeError) as json_error:
+                print(f"JSON parsing error: {json_error}")
+                print(f"Response text: {response_text}")
+                return self._create_fallback_analysis(clause, f"JSON parsing failed: {str(json_error)}")
+            
         except Exception as e:
-            print(f"Error analyzing clause: {str(e)}")
+            print(f"Error in AI analysis: {str(e)}")
             return self._create_fallback_analysis(clause, str(e))
     
     def _create_fallback_analysis(self, clause: str, error_info: str) -> Dict[str, Any]:
@@ -176,19 +230,21 @@ class LegalDocumentAnalyzer:
             if not full_text.strip():
                 raise Exception("No text could be extracted from the PDF")
             
-            # Split into clauses
-            clauses = self.split_into_clauses(full_text)
+            # Split into clauses with position tracking
+            clause_objects = self.split_into_clauses(full_text)
             
-            if not clauses:
+            if not clause_objects:
                 raise Exception("No analyzable clauses found in the document")
             
             # Analyze each clause
             clause_analyses = []
-            for i, clause in enumerate(clauses[:10]):  # Limit to first 10 for demo
-                print(f"Analyzing clause {i+1}/{min(len(clauses), 10)}...")
-                analysis = self.analyze_single_clause(clause)
-                analysis['original'] = clause
+            for i, clause_obj in enumerate(clause_objects[:10]):  # Limit to first 10 for demo
+                print(f"Analyzing clause {i+1}/{min(len(clause_objects), 10)}...")
+                analysis = self.analyze_single_clause(clause_obj['text'])
+                analysis['original'] = clause_obj['text']
                 analysis['clause_number'] = i + 1
+                analysis['start_position'] = clause_obj['start_position']
+                analysis['end_position'] = clause_obj['end_position']
                 clause_analyses.append(analysis)
             
             # Calculate overall scores
@@ -197,9 +253,11 @@ class LegalDocumentAnalyzer:
             # Prepare results
             results = {
                 "document_info": {
-                    "total_clauses": len(clauses),
+                    "total_clauses": len(clause_objects),
                     "analyzed_clauses": len(clause_analyses),
-                    "text_length": len(full_text)
+                    "text_length": len(full_text),
+                    "extracted_text": full_text,  # Include full text for frontend highlighting
+                    "filename": os.path.basename(file_path) if hasattr(os.path, 'basename') else "document.pdf"
                 },
                 "scores": scores,
                 "clause_analyses": clause_analyses,
@@ -252,6 +310,7 @@ def analyze_pdf():
                 os.remove(temp_path)
     
     except Exception as e:
+        print(f"Error in analyze_pdf: {str(e)}")  # Add logging
         return jsonify({"error": str(e)}), 500
 
 @app.route('/health', methods=['GET'])
@@ -259,9 +318,15 @@ def health_check():
     """Health check endpoint"""
     return jsonify({"status": "healthy", "service": "Legal Document Analyzer"})
 
-@app.route('/', methods=['GET'])
+@app.route('/')
 def index():
+    """Serve the main HTML page"""
     return render_template('index.html')
+
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    """Serve static files"""
+    return send_from_directory('static', filename)
 
 def analyze_local_file(file_path: str):
     """Standalone function to analyze local PDF file"""
